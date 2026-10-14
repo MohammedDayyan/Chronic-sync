@@ -1,0 +1,5 @@
+mappings:
+  - code_glob: "backend/**/*.py"
+    doc_path: "docs/api_authentication.md"
+  - code_glob: "src/**/*.py"
+    doc_path: "docs/architecture.md"

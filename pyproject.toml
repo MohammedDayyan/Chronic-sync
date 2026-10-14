@@ -1,0 +1,23 @@
+[project]
+name = "chronicle-sync"
+version = "0.1.0"
+description = "Semantic architectural drift sentinel powered by local Hugging Face GGUF models on CPU."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "GitPython>=3.1.40",
+    "networkx>=3.2",
+    "pydantic>=2.6.0",
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "PyYAML>=6.0",
+    "llama-cpp-python>=0.2.26",
+    "huggingface_hub>=0.20.0"
+]
+
+[project.scripts]
+chronicle-sync = "src.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
