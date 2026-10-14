@@ -1,0 +1,125 @@
+Here is the complete updated `README.md` document, incorporating all the core commands right alongside your project overview, architecture, tech stack, and directory structure:
+
+```markdown
+# Chronicle-Sync 🛡️
+> **Semantic Architectural Drift Sentinel**  
+> An autonomous multi-agent developer tool that continuously audits and fixes semantic code-to-documentation drift locally, with a minimal memory footprint.
+
+---
+
+## 🚀 Overview
+
+While linters catch syntax errors and formatting bugs, codebases and technical documentation inevitably drift apart. Developers modify implementation signatures, add parameters, or refactor logic across git branches, while READMEs, API guides, and design docs grow outdated. 
+
+**Chronicle-Sync** is an out-of-the-box, local AI agentic pipeline that intercepts your git changes, uses Abstract Syntax Tree (AST) parsing and open-weights LLMs to reason about semantic discrepancies, and autonomously applies precise Markdown patches to keep your documentation in sync.
+
+---
+
+## 🧠 The Agentic Architecture
+
+Chronicle-Sync operates via a deterministic, lightweight Directed Acyclic Graph (DAG) state machine where a typed `SyncState` dictionary flows across three micro-agents:
+
+1. **Agent 1: Diff Parser & AST Extractor (`src/agents/parser.py`)**
+   * Intercepts staged or working git diffs using robust regex and git inspection.
+   * Extracts structural changes (e.g., modified function signatures, new parameters, class modifications) without loading whole code files into memory.
+2. **Agent 2: Specification Auditor (`src/agents/auditor.py`)**
+   * Dynamically discovers documentation files in your repository (prioritizing `README.md`, followed by recursive `.md` scans).
+   * Cross-references code deltas against focused document excerpts using a local Hugging Face GGUF instruction model (`bartowski/Qwen2.5-7B-Instruct-GGUF`).
+   * Employs strict JSON validation to flag severity and isolate true semantic drifts.
+3. **Agent 3: Evaluator-Optimizer Patch Generator & Auto-Patcher (`src/agents/patcher.py`)**
+   * Takes verified drift reports and generates concise, accurate Markdown corrections.
+   * Autonomously writes the clean fixes directly back into your repository's documentation files in place.
+
+---
+
+## ⚡ Key Features
+
+- **CPU-Optimized Inference:** Built from workstation CPU requirements using Hugging Face GGUF artifacts and `llama-cpp-python` with full core vector instruction utilization—no expensive GPU required.
+- **Zero Vector Database Bloat:** Avoids heavy external vector stores (like Pinecone or Milvus). It evaluates incremental git diffs on the fly with a negligible memory footprint (~4.5 GB RAM).
+- **Autonomous Auto-Patching:** Automatically updates markdown documentation files in place when discrepancies are detected.
+- **Dynamic Markdown Discovery:** Automatically scans project documentation, giving top priority to `README.md` and seamlessly locating API references and architecture guides.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Core Runtime:** Python 3.10+
+- **AI Model Engine:** Hugging Face Hub (`huggingface_hub`), `llama-cpp-python` (GGUF CPU backend)
+- **Code & Git Analysis:** `GitPython`, built-in `re` and `ast` modules
+- **CLI & Output Styling:** `Typer`, `Rich`
+- **Data Management:** `PyYAML`, `Pydantic`
+
+---
+
+## 📂 Project Directory Structure
+
+```text
+chronicle-sync/
+├── config/
+│   └── mapping.yaml               # Optional routing configuration
+├── src/
+│   ├── __init__.py
+│   ├── cli.py                     # Typer CLI entrypoint & auto-apply runner
+│   ├── state.py                   # Pydantic SyncState definitions
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── parser.py              # Worker 1: Git diff & structural extraction
+│   │   ├── auditor.py             # Worker 2: Dynamic documentation drift analyzer
+│   │   └── patcher.py             # Worker 3: Evaluator-Optimizer patcher & file writer
+│   ├── engine/
+│   │   ├── graph.py               # Dynamic document discovery manager
+│   │   └── model.py               # Local Hugging Face GGUF model loader
+│   └── utils/
+│       ├── __init__.py
+│       ├── logger.py              # Rich console logger
+│       └── git_utils.py           # Robust multi-fallback git diff reader
+├── pyproject.toml                 # Package metadata, build system & setuptools find config
+└── README.md
+
+```
+
+---
+
+## 💻 Important Commands
+
+Use these essential commands to set up, install, and run **Chronicle-Sync**:
+
+### 1. Set Your Hugging Face Authentication Token
+
+```bash
+export HF_TOKEN="your_huggingface_token_here"
+
+```
+
+### 2. Install CPU-Optimized Dependencies (Windows / Linux / macOS)
+
+Installs the pre-built CPU wheel for `llama-cpp-python` to avoid long-path build compilation issues on Windows:
+
+```bash
+pip install llama-cpp-python --extra-index-url [https://abetlen.github.io/llama-cpp-python/whl/cpu](https://abetlen.github.io/llama-cpp-python/whl/cpu)
+
+```
+
+### 3. Install Chronicle-Sync in Editable Mode
+
+Run this inside your local `chronicle-sync` source folder:
+
+```bash
+pip install -e .
+
+```
+
+### 4. Run the Sentinel Check Against Any Target Git Repository
+
+Navigate to your project repository, stage your changes, and run the tool:
+
+```bash
+cd path/to/your-code-repo
+git add .
+chronicle-sync
+
+```
+
+```
+
+```
