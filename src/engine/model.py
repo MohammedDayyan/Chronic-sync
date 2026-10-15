@@ -28,8 +28,8 @@ class LocalHFModel:
         mock: bool = False
     ):
         self.mock = mock or os.getenv("CHRONICLE_MOCK_LLM", "false").lower() in ("1", "true", "yes")
-        self.repo_id = repo_id or os.getenv("CHRONICLE_MODEL_REPO", "bartowski/Qwen2.5-7B-Instruct-GGUF")
-        self.filename = filename or os.getenv("CHRONICLE_MODEL_FILE", "Qwen2.5-7B-Instruct-Q4_K_M.gguf")
+        self.repo_id = repo_id or os.getenv("CHRONICLE_MODEL_REPO", "bartowski/Qwen2.5-Coder-7B-Instruct-GGUF")
+        self.filename = filename or os.getenv("CHRONICLE_MODEL_FILE", "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf")
         self.n_ctx = n_ctx or int(os.getenv("CHRONICLE_N_CTX", "4096"))
         self.n_threads = n_threads or int(os.getenv("CHRONICLE_N_THREADS", str(os.cpu_count() or 8)))
 
