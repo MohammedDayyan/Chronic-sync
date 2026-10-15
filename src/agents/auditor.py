@@ -4,6 +4,7 @@ from pathlib import Path
 from src.state import SyncState
 from src.engine.graph import ArchitectureGraphManager
 from src.engine.model import LocalHFModel
+from src.utils.logger import log_info
 
 def audit_specification_drift(state: SyncState) -> SyncState:
     graph_manager = ArchitectureGraphManager()
@@ -19,6 +20,7 @@ def audit_specification_drift(state: SyncState) -> SyncState:
             continue
             
         linked_files = graph_manager.get_linked_docs(file_path)
+        log_info(f"Auditing code change in '{file_path}' against docs: {linked_files}")
 
         for doc_file in linked_files:
             doc_path = Path(doc_file)
