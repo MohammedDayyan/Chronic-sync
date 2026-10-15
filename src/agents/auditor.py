@@ -197,21 +197,15 @@ JSON:"""
                         "delta": delta
                     })
 
-            else:
-                # Mapped documentation file does not exist yet on disk
-                log_info(f"Target documentation file '{doc_file}' does not exist yet. Flagging creation.")
-                drift_reports.append({
-                    "doc_file": doc_file,
-                    "target": target,
-                    "change_type": delta.get("change_type", "NEW_DOCUMENTATION"),
-                    "discrepancy": f"Documentation file '{doc_file}' needs to be initialized to document '{target}'.",
-                    "severity": "HIGH",
-                    "excerpt": "",
-                    "heading": "API Documentation",
-                    "is_symbol_present": False,
-                    "delta": delta
-                })
+    # Deduplicate drift reports by (doc_file, target) to avoid multiple repetitive audits
+    seen_reports = set()
+    unique_reports = []
+    for r in drift_reports:
+        key = (r["doc_file"], r["target"])
+        if key not in seen_reports:
+            seen_reports.add(key)
+            unique_reports.append(r)
 
     state["linked_docs"] = linked_docs_list
-    state["drift_reports"] = drift_reports
+    state["drift_reports"] = unique_reports
     return state

@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 chronicle_sync.egg-info/PKG-INFO
 chronicle_sync.egg-info/SOURCES.txt
@@ -14,3 +15,4 @@ src/engine/graph.py
 src/engine/model.py
 src/utils/git_utils.py
 src/utils/logger.py
+tests/test_sentinel.py

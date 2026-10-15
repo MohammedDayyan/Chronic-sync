@@ -129,12 +129,13 @@ class ArchitectureGraphManager:
                        any(k in file_lower for k in ("readme", "architecture", "changelog", "spec")):
                         docs.add(rel_file)
 
-        # Include mapped doc paths even if they are pending creation
+        # Only include mapped doc paths if the file actually exists on disk
         for m in self.mappings:
             doc_path = m["doc_path"]
-            docs.add(doc_path)
+            if (self.root_dir / doc_path).is_file():
+                docs.add(doc_path)
 
-        return sorted(list(docs))
+        return sorted([d for d in docs if (self.root_dir / d).is_file()])
 
     def _read_doc_text(self, rel_path: str) -> str:
         """Reads document content with caching."""
@@ -239,15 +240,17 @@ class ArchitectureGraphManager:
                     if isinstance(p, str) and p not in ("self", "cls"):
                         delta_tokens.update(self._extract_tokens(p))
 
-        # 1. Config mapping check (Highest deterministic priority)
+        # 1. Config mapping check (Highest deterministic priority for existing files)
         for mapping in self.mappings:
             code_glob = mapping["code_glob"]
             doc_path = mapping["doc_path"]
-            if match_glob_pattern(code_file, code_glob):
+            if (self.root_dir / doc_path).is_file() and match_glob_pattern(code_file, code_glob):
                 record_score(doc_path, 1.2, f"matches config rule '{code_glob}'")
 
         # 2. Document content inspection for exact symbol & file mentions
         for doc in all_docs:
+            if not (self.root_dir / doc).is_file():
+                continue
             doc_content = self._read_doc_text(doc)
             doc_lower = doc.lower()
             doc_stem = Path(doc).stem.lower()
@@ -281,8 +284,10 @@ class ArchitectureGraphManager:
             elif any(part in doc_lower for part in code_parts if len(part) > 3):
                 record_score(doc, 0.5, f"shares path segment with '{code_file}'")
 
-        # 4. Default baseline for README / Architecture documents
+        # 4. Default baseline for README / Architecture documents (existing only)
         for doc in all_docs:
+            if not (self.root_dir / doc).is_file():
+                continue
             doc_lower = doc.lower()
             if "readme" in doc_lower:
                 record_score(doc, 0.4, "project readme overview")
@@ -297,9 +302,10 @@ class ArchitectureGraphManager:
             if doc_node in self.graph:
                 self.graph.add_edge(code_node, doc_node, weight=score, reasons=doc_reasons.get(doc, []))
 
-        # Filter and rank candidates
+        # Filter and rank candidates (strictly existing files only)
+        existing_docs = [d for d in all_docs if (self.root_dir / d).is_file()]
         ranked_docs = sorted(
-            [d for d, s in doc_scores.items() if s >= 0.5],
+            [d for d, s in doc_scores.items() if s >= 0.5 and (self.root_dir / d).is_file()],
             key=lambda d: doc_scores[d],
             reverse=True
         )
@@ -307,22 +313,21 @@ class ArchitectureGraphManager:
         # Fallback if no specific doc reached threshold
         if not ranked_docs:
             fallback = sorted(
-                doc_scores.keys(),
+                [d for d in doc_scores.keys() if (self.root_dir / d).is_file()],
                 key=lambda d: doc_scores[d],
                 reverse=True
             )
             if fallback:
                 ranked_docs = [fallback[0]]
-            elif all_docs:
-                # Find any README or architecture doc
-                readmes = [d for d in all_docs if "readme" in d.lower()]
-                ranked_docs = [readmes[0]] if readmes else [all_docs[0]]
+            elif existing_docs:
+                readmes = [d for d in existing_docs if "readme" in d.lower()]
+                ranked_docs = [readmes[0]] if readmes else [existing_docs[0]]
 
         # Ensure deduplicated list preserving order
         seen = set()
         unique_docs = []
         for d in ranked_docs:
-            if d not in seen:
+            if d not in seen and (self.root_dir / d).is_file():
                 seen.add(d)
                 unique_docs.append(d)
 

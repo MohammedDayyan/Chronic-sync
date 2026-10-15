@@ -253,3 +253,95 @@ def test_graph_manager_multi_format_and_relevance_ranking():
         )
         assert linked[0] == "docs/auth.markdown"
 
+
+def test_no_extra_docs_created():
+    """Verify that mapped docs that do not exist are not created, and only existing docs are modified."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        (root / "config").mkdir(parents=True)
+        # Create mapping pointing to nonexistent docs
+        config_data = {
+            "mappings": [
+                {"code_glob": "backend/**/*.py", "doc_path": "docs/nonexistent_auth.md"}
+            ]
+        }
+        (root / "config" / "mapping.yaml").write_text(yaml.dump(config_data), encoding="utf-8")
+        
+        # Only create README.md
+        (root / "README.md").write_text("# Project Readme\n\n## Backend\nBackend details.", encoding="utf-8")
+
+        gm = ArchitectureGraphManager(root_dir=root)
+        discovered = gm.discover_docs()
+        # Ensure nonexistent mapped file is NOT in discovered docs
+        assert "docs/nonexistent_auth.md" not in discovered
+        assert discovered == ["README.md"]
+
+        # Ensure get_linked_docs links existing README.md, NOT nonexistent_auth.md
+        linked = gm.get_linked_docs("backend/service.py")
+        assert "docs/nonexistent_auth.md" not in linked
+        assert "README.md" in linked
+
+        # Ensure apply_patch_to_file refuses to create nonexistent files
+        nonexistent_file = root / "docs" / "nonexistent_auth.md"
+        patch = {
+            "file": str(nonexistent_file),
+            "target": "login",
+            "patched_text": "### `login`\nNew login function."
+        }
+        apply_patch_to_file(nonexistent_file, patch)
+        assert not nonexistent_file.exists()
+
+
+def test_no_repetitions_in_patch_application():
+    """Verify that patches do not cause duplicate sections, duplicate headings, or repeated text."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        doc_file = Path(tmpdir) / "README.md"
+        doc_file.write_text("# Project\n\n## API Reference\n\n### `create_user`\nOld signature.\n", encoding="utf-8")
+
+        patch = {
+            "file": str(doc_file),
+            "target": "create_user",
+            "original_text": "### `create_user`\nOld signature.",
+            "patched_text": "### `create_user`\nUpdated signature with email.",
+            "heading": "API Reference"
+        }
+
+        # Apply once
+        apply_patch_to_file(doc_file, patch)
+        content_after_first = doc_file.read_text(encoding="utf-8")
+        assert content_after_first.count("### `create_user`") == 1
+        assert "Updated signature with email." in content_after_first
+
+        # Apply second time (idempotent / no duplicate)
+        apply_patch_to_file(doc_file, patch)
+        content_after_second = doc_file.read_text(encoding="utf-8")
+        assert content_after_second.count("### `create_user`") == 1
+
+        # Test patcher deduplication when multiple drift reports for same target exist
+        state: SyncState = {
+            "drift_reports": [
+                {
+                    "doc_file": str(doc_file),
+                    "target": "create_user",
+                    "discrepancy": "signature changed",
+                    "excerpt": "### `create_user`\nUpdated signature with email.",
+                    "heading": "API Reference",
+                    "is_symbol_present": True,
+                    "delta": {"target": "create_user", "change_type": "MODIFIED_FUNCTION"}
+                },
+                {
+                    "doc_file": str(doc_file),
+                    "target": "create_user",
+                    "discrepancy": "parameter added",
+                    "excerpt": "### `create_user`\nUpdated signature with email.",
+                    "heading": "API Reference",
+                    "is_symbol_present": True,
+                    "delta": {"target": "create_user", "change_type": "MODIFIED_FUNCTION"}
+                }
+            ]
+        }
+        patched_state = generate_documentation_patches(state)
+        # Should be deduplicated to exactly 1 patch
+        assert len(patched_state["proposed_patches"]) == 1
+
+
